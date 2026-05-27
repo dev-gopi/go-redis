@@ -6,23 +6,21 @@ import (
 	"github.com/dev-gopi/go-redis/internal/storage"
 )
 
-func HandleHGet(
+func HandleHLen(
 	cl *client.Client,
 	cmd []string,
 ) string {
 
-	if len(cmd) != 3 {
+	if len(cmd) != 2 {
 		return protocol.Error("wrong number of arguments")
 	}
 
 	key := cmd[1]
-	field := cmd[2]
 	db := storage.GetClientDB(cl)
 
 	value, exists := db.Store.GetValue(key)
-
 	if !exists {
-		return protocol.NullBulkString()
+		return protocol.Integer(0)
 	}
 
 	if value.Type != storage.HashType {
@@ -31,13 +29,10 @@ func HandleHGet(
 		)
 	}
 
-	hash := value.Data.(map[string]string)
-
-	val, exists := hash[field]
-
-	if !exists {
-		return protocol.NullBulkString()
+	hash, ok := value.Data.(map[string]string)
+	if !ok {
+		return protocol.Integer(0)
 	}
 
-	return protocol.BulkString(val)
+	return protocol.Integer(len(hash))
 }

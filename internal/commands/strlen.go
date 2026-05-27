@@ -6,18 +6,23 @@ import (
 	"github.com/dev-gopi/go-redis/internal/storage"
 )
 
-func HandleGet(client *client.Client, cmd []string) string {
+func HandleStrlen(
+	cl *client.Client,
+	cmd []string,
+) string {
+
 	if len(cmd) != 2 {
 		return protocol.Error("wrong number of arguments")
 	}
 
 	key := cmd[1]
-	db := storage.GetClientDB(client)
+	db := storage.GetClientDB(cl)
 
-	value, ok := db.Store.Get(key)
-	if !ok {
-		return protocol.NullBulkString()
+	value, exists := db.Store.Get(key)
+
+	if !exists {
+		return protocol.Integer(0)
 	}
 
-	return protocol.BulkString(value)
+	return protocol.Integer(len(value))
 }

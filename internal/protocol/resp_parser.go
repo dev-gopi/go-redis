@@ -3,6 +3,8 @@ package protocol
 import (
 	"bufio"
 	"errors"
+	"fmt"
+	"io"
 	"strconv"
 	"strings"
 )
@@ -13,7 +15,7 @@ func ParseRESP(reader *bufio.Reader) ([]string, error) {
 		return nil, err
 	}
 
-	if line[0] != '*' {
+	if len(line) == 0 || line[0] != '*' {
 		return nil, errors.New("invalid RESP array")
 	}
 
@@ -25,17 +27,31 @@ func ParseRESP(reader *bufio.Reader) ([]string, error) {
 	parts := make([]string, 0, count)
 
 	for i := 0; i < count; i++ {
-		_, err := reader.ReadString('\n')
+		bulkHeader, err := reader.ReadString('\n')
 		if err != nil {
 			return nil, err
 		}
 
-		data, err := reader.ReadString('\n')
+		if len(bulkHeader) == 0 || bulkHeader[0] != '$' {
+			return nil, fmt.Errorf("invalid RESP bulk string")
+		}
+
+		bulkLen, err := strconv.Atoi(strings.TrimSpace(bulkHeader[1:]))
 		if err != nil {
 			return nil, err
 		}
 
-		parts = append(parts, strings.TrimSpace(data))
+		if bulkLen == -1 {
+			parts = append(parts, "")
+			continue
+		}
+
+		buf := make([]byte, bulkLen+2)
+		if _, err := io.ReadFull(reader, buf); err != nil {
+			return nil, err
+		}
+
+		parts = append(parts, string(buf[:bulkLen]))
 	}
 
 	return parts, nil

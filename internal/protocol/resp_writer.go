@@ -21,3 +21,30 @@ func Error(s string) string {
 func Integer(i int) string {
 	return fmt.Sprintf(":%d\r\n", i)
 }
+
+func Array(values []string) string {
+
+	resp := "*" + fmt.Sprintf("%d", len(values)) + "\r\n"
+
+	for _, v := range values {
+		resp += BulkString(v)
+	}
+
+	return resp
+}
+
+func ArrayWithNulls(values []string, present []bool) string {
+
+	resp := "*" + fmt.Sprintf("%d", len(values)) + "\r\n"
+
+	for i, v := range values {
+		if i < len(present) && !present[i] {
+			resp += NullBulkString()
+			continue
+		}
+
+		resp += BulkString(v)
+	}
+
+	return resp
+}

@@ -44,6 +44,10 @@ func (s *Server) handleConnection(conn net.Conn) {
 
 	cl := client.NewClient(conn)
 
+	client.Manager.Add(cl)
+
+	defer client.Manager.Remove(cl.ID)
+
 	log.Printf(
 		"Client connected: %s (%s)",
 		cl.ID,

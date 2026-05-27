@@ -8,29 +8,26 @@ import (
 	"github.com/dev-gopi/go-redis/internal/storage"
 )
 
-func HandleDel(cl *client.Client, cmd []string) string {
-	if len(cmd) != 2 {
+func HandleJSONDel(cl *client.Client, cmd []string) string {
+	if len(cmd) < 3 {
 		return protocol.Error("wrong number of arguments")
 	}
 
+	key := cmd[1]
 	db := storage.GetClientDB(cl)
+	deleted := 0
+	if db.Store.Del(key) {
+		deleted = 1
+	}
 
-	ok := db.Store.Del(cmd[1])
-
-	if ok {
-
-		err := aof.Manager.Write(cl.SelectedDB, cmd)
-
-		if err != nil {
+	if deleted > 0 {
+		if err := aof.Manager.Write(cl.SelectedDB, cmd); err != nil {
 			return protocol.Error("AOF write failed")
 		}
-
 		if wal.Manager != nil {
 			_ = wal.Manager.Write(cl.SelectedDB, cmd)
 		}
-
-		return protocol.Integer(1)
 	}
 
-	return protocol.Integer(0)
+	return protocol.Integer(deleted)
 }

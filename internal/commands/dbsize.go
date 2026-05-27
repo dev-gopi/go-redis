@@ -6,24 +6,14 @@ import (
 	"github.com/dev-gopi/go-redis/internal/storage"
 )
 
-func HandleExists(
+func HandleDBSize(
 	cl *client.Client,
 	cmd []string,
 ) string {
 
-	if len(cmd) < 2 {
-		return protocol.Error("wrong number of arguments")
-	}
-
-	count := 0
 	db := storage.GetClientDB(cl)
 
-	for i := 1; i < len(cmd); i++ {
+	size := db.Store.Size()
 
-		if db.Store.Exists(cmd[i]) {
-			count++
-		}
-	}
-
-	return protocol.Integer(count)
+	return protocol.Integer(size)
 }

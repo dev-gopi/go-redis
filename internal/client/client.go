@@ -14,6 +14,7 @@ type Client struct {
 	Authenticated bool
 	Username      string
 	SelectedDB    int
+	Name          string
 }
 
 func NewClient(conn net.Conn) *Client {

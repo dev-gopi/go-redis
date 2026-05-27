@@ -1,0 +1,50 @@
+{
+  "databases": {
+    "0": {
+      "gopi": {
+        "Type": "string",
+        "Data": "nath",
+        "ExpiresAt": "0001-01-01T00:00:00Z"
+      },
+      "hi": {
+        "Type": "hash",
+        "Data": {
+          "dhfsh": "hsrghsr",
+          "dhrsth": "6544",
+          "ebes": "gbrgsbgfrr"
+        },
+        "ExpiresAt": "0001-01-01T00:00:00Z"
+      },
+      "hiiivsfvsd": {
+        "Type": "json",
+        "Data": {
+          "Raw": "ewogICAgInRlc3QiOiJ0ZXN0Igp9",
+          "Parsed": {
+            "test": "test"
+          }
+        },
+        "ExpiresAt": "0001-01-01T00:00:00Z"
+      },
+      "verbgets": {
+        "Type": "string",
+        "Data": "dafvbdebdebe",
+        "ExpiresAt": "0001-01-01T00:00:00Z"
+      }
+    },
+    "1": {},
+    "10": {},
+    "11": {},
+    "12": {},
+    "13": {},
+    "14": {},
+    "15": {},
+    "2": {},
+    "3": {},
+    "4": {},
+    "5": {},
+    "6": {},
+    "7": {},
+    "8": {},
+    "9": {}
+  }
+}

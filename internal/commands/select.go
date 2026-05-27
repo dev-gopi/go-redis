@@ -1,14 +1,14 @@
 package commands
 
 import (
-	"time"
+	"strconv"
 
 	"github.com/dev-gopi/go-redis/internal/client"
 	"github.com/dev-gopi/go-redis/internal/protocol"
 	"github.com/dev-gopi/go-redis/internal/storage"
 )
 
-func HandleTTL(
+func HandleSelect(
 	cl *client.Client,
 	cmd []string,
 ) string {
@@ -17,20 +17,17 @@ func HandleTTL(
 		return protocol.Error("wrong number of arguments")
 	}
 
-	key := cmd[1]
-	db := storage.GetClientDB(cl)
-
-	value, exists := db.Store.GetValue(key)
-
-	if !exists {
-		return protocol.Integer(-2)
+	dbID, err := strconv.Atoi(cmd[1])
+	if err != nil {
+		return protocol.Error("invalid DB index")
 	}
 
-	if value.ExpiresAt.IsZero() {
-		return protocol.Integer(-1)
+	_, err = storage.Manager.GetDB(dbID)
+	if err != nil {
+		return protocol.Error("DB index out of range")
 	}
 
-	ttl := int(time.Until(value.ExpiresAt).Seconds())
+	cl.SelectedDB = dbID
 
-	return protocol.Integer(ttl)
+	return protocol.SimpleString("OK")
 }
