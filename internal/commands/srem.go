@@ -8,7 +8,7 @@ import (
 	"github.com/dev-gopi/go-redis/internal/storage"
 )
 
-func HandleLPush(cl *client.Client, cmd []string) string {
+func HandleSRem(cl *client.Client, cmd []string) string {
 	if len(cmd) < 3 {
 		return protocol.Error("wrong number of arguments")
 	}
@@ -16,22 +16,32 @@ func HandleLPush(cl *client.Client, cmd []string) string {
 	key := cmd[1]
 	db := storage.GetClientDB(cl)
 
-	items, exists := db.Store.GetList(key)
+	value, exists := db.Store.GetValue(key)
 	if !exists {
-		value, ok := db.Store.GetValue(key)
-		if ok && value.Type != storage.ListType {
-			return protocol.Error("WRONGTYPE Operation against a key holding the wrong kind of value")
+		return protocol.Integer(0)
+	}
+
+	if value.Type != storage.SetType {
+		return protocol.Error("WRONGTYPE Operation against a key holding the wrong kind of value")
+	}
+
+	members, ok := db.Store.GetSet(key)
+	if !ok {
+		return protocol.Integer(0)
+	}
+
+	removed := 0
+	for i := 2; i < len(cmd); i++ {
+		if _, present := members[cmd[i]]; present {
+			delete(members, cmd[i])
+			removed++
 		}
 	}
 
-	for i := 2; i < len(cmd); i++ {
-		items = append([]string{cmd[i]}, items...)
-	}
-
-	if value, ok := db.Store.GetValue(key); ok {
-		db.Store.SetValue(key, storage.Value{Type: storage.ListType, Data: storage.ListValue(items), ExpiresAt: value.ExpiresAt})
+	if len(members) == 0 {
+		db.Store.Del(key)
 	} else {
-		db.Store.SetList(key, items, storage.Value{}.ExpiresAt)
+		db.Store.SetSet(key, members, value.ExpiresAt)
 	}
 
 	if err := aof.Manager.Write(cl.SelectedDB, cmd); err != nil {
@@ -42,5 +52,5 @@ func HandleLPush(cl *client.Client, cmd []string) string {
 		_ = wal.Manager.Write(cl.SelectedDB, cmd)
 	}
 
-	return protocol.Integer(len(items))
+	return protocol.Integer(removed)
 }

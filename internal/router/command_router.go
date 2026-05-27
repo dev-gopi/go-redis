@@ -114,6 +114,97 @@ func Handle(cl *client.Client, cmd []string) string {
 		}
 		return commands.HandleGetRange(cl, cmd)
 
+	case "LPUSH":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleLPush(cl, cmd)
+
+	case "LPUSHX":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleLPushX(cl, cmd)
+
+	case "RPUSH":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleRPush(cl, cmd)
+
+	case "RPUSHX":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleRPushX(cl, cmd)
+
+	case "LPOP":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleLPop(cl, cmd)
+
+	case "LRANGE":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleLRange(cl, cmd)
+
+	case "LLEN":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleLLen(cl, cmd)
+
+	case "EXPIRE":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleExpire(cl, cmd)
+
+	case "INCR":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleIncr(cl, cmd)
+
+	case "SADD":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleSAdd(cl, cmd)
+
+	case "SCARD":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleSCard(cl, cmd)
+
+	case "SSCAN":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleSScan(cl, cmd)
+
+	case "SREM":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleSRem(cl, cmd)
+
 	case "JSON.SET":
 		authErr := RequireAuth(cl)
 		if authErr != "" {

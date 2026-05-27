@@ -1,7 +1,12 @@
-del efdvdv
-set verbgets dafvbdebdebe NX
-del hiii
-json.set hiiivsfvsd . {
-    "test":"test"
+set string string NX
+rpush list value
+rpushx list value end 1
+lpushx list value top 1
+json.set json . {
+    "json": "value",
+    "json1": "value1"
 } NX
-set gopi nath NX
+sadd set set set 1 set 2
+sadd set gfnfnf
+srem set gfnfnf
+hdel hash test

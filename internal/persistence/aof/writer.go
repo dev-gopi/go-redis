@@ -1,9 +1,8 @@
 package aof
 
 import (
-	"fmt"
+	"encoding/json"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/dev-gopi/go-redis/internal/logger"
@@ -37,6 +36,11 @@ func Init(path string) error {
 	return nil
 }
 
+type aofEntry struct {
+	DB  int      `json:"db"`
+	Cmd []string `json:"cmd"`
+}
+
 func (w *Writer) Write(
 	dbID int,
 	command []string,
@@ -45,24 +49,15 @@ func (w *Writer) Write(
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if dbID != 0 {
-		_, err := w.file.WriteString(
-			fmt.Sprintf("SELECT %d\n", dbID),
-		)
-		if err != nil {
-			return err
-		}
+	entry := aofEntry{DB: dbID, Cmd: command}
+	b, err := json.Marshal(entry)
+	if err != nil {
+		return err
 	}
-
-	line := strings.Join(command, " ")
 
 	logger.InfoLogger.Printf("AOF write db=%d cmd=%v", dbID, command)
 
-	_, err := w.file.WriteString(
-		line + "\n",
-	)
-
-	if err != nil {
+	if _, err := w.file.WriteString(string(b) + "\n"); err != nil {
 		return err
 	}
 

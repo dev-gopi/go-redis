@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/dev-gopi/go-redis/internal/logger"
 
@@ -12,6 +14,12 @@ import (
 )
 
 func Load(path string) error {
+
+	// capture file mod time
+	var modTime time.Time
+	if fi, err := os.Stat(path); err == nil {
+		modTime = fi.ModTime()
+	}
 
 	bytes, err := os.ReadFile(path)
 
@@ -57,6 +65,13 @@ func Load(path string) error {
 		db.Store.Import(normalizeValues(values))
 	}
 
+	// set LoadedAt to snapshot file mod time
+	if !modTime.IsZero() {
+		LoadedAt = modTime
+	} else {
+		LoadedAt = time.Now()
+	}
+
 	logger.InfoLogger.Printf("Snapshot loaded: %s", path)
 
 	return nil
@@ -76,6 +91,12 @@ func normalizeValue(value storage.Value) storage.Value {
 	switch value.Type {
 	case storage.HashType:
 		value.Data = normalizeHashData(value.Data)
+	case storage.ListType:
+		value.Data = normalizeListData(value.Data)
+	case storage.SetType:
+		value.Data = normalizeSetData(value.Data)
+	case storage.ZSetType:
+		value.Data = normalizeZSetData(value.Data)
 	case storage.JsonType:
 		value.Data = normalizeJSONData(value.Data)
 	}
@@ -119,4 +140,82 @@ func normalizeJSONData(data any) any {
 	}
 
 	return storage.JSONValue{Raw: raw, Parsed: parsed}
+}
+
+func normalizeListData(data any) any {
+	switch list := data.(type) {
+	case storage.ListValue:
+		return list
+	case []string:
+		return storage.ListValue(list)
+	case []any:
+		normalized := make(storage.ListValue, 0, len(list))
+		for _, item := range list {
+			normalized = append(normalized, fmt.Sprint(item))
+		}
+		return normalized
+	default:
+		return data
+	}
+}
+
+func normalizeSetData(data any) any {
+	switch set := data.(type) {
+	case storage.SetValue:
+		return set
+	case map[string]struct{}:
+		copySet := make(storage.SetValue, len(set))
+		for member := range set {
+			copySet[member] = struct{}{}
+		}
+		return copySet
+	case map[string]any:
+		copySet := make(storage.SetValue, len(set))
+		for member := range set {
+			copySet[member] = struct{}{}
+		}
+		return copySet
+	case []any:
+		copySet := make(storage.SetValue, len(set))
+		for _, member := range set {
+			copySet[fmt.Sprint(member)] = struct{}{}
+		}
+		return copySet
+	default:
+		return data
+	}
+}
+
+func normalizeZSetData(data any) any {
+	switch zset := data.(type) {
+	case storage.ZSetValue:
+		return zset
+	case map[string]float64:
+		copyZSet := make(storage.ZSetValue, len(zset))
+		for member, score := range zset {
+			copyZSet[member] = score
+		}
+		return copyZSet
+	case map[string]any:
+		copyZSet := make(storage.ZSetValue, len(zset))
+		for member, rawScore := range zset {
+			switch score := rawScore.(type) {
+			case float64:
+				copyZSet[member] = score
+			case int:
+				copyZSet[member] = float64(score)
+			case json.Number:
+				if parsed, err := score.Float64(); err == nil {
+					copyZSet[member] = parsed
+				}
+			default:
+				if parsed, err := strconv.ParseFloat(fmt.Sprint(score), 64); err == nil {
+					copyZSet[member] = parsed
+				}
+			}
+		}
+		return copyZSet
+	default:
+		return data
+	}
 }

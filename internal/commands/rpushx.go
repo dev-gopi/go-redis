@@ -8,7 +8,7 @@ import (
 	"github.com/dev-gopi/go-redis/internal/storage"
 )
 
-func HandleLPush(cl *client.Client, cmd []string) string {
+func HandleRPushX(cl *client.Client, cmd []string) string {
 	if len(cmd) < 3 {
 		return protocol.Error("wrong number of arguments")
 	}
@@ -16,23 +16,22 @@ func HandleLPush(cl *client.Client, cmd []string) string {
 	key := cmd[1]
 	db := storage.GetClientDB(cl)
 
-	items, exists := db.Store.GetList(key)
+	value, exists := db.Store.GetValue(key)
 	if !exists {
-		value, ok := db.Store.GetValue(key)
-		if ok && value.Type != storage.ListType {
-			return protocol.Error("WRONGTYPE Operation against a key holding the wrong kind of value")
-		}
+		return protocol.Integer(0)
 	}
 
-	for i := 2; i < len(cmd); i++ {
-		items = append([]string{cmd[i]}, items...)
+	if value.Type != storage.ListType {
+		return protocol.Error("WRONGTYPE Operation against a key holding the wrong kind of value")
 	}
 
-	if value, ok := db.Store.GetValue(key); ok {
-		db.Store.SetValue(key, storage.Value{Type: storage.ListType, Data: storage.ListValue(items), ExpiresAt: value.ExpiresAt})
-	} else {
-		db.Store.SetList(key, items, storage.Value{}.ExpiresAt)
+	items, ok := db.Store.GetList(key)
+	if !ok {
+		return protocol.Integer(0)
 	}
+
+	items = append(items, cmd[2:]...)
+	db.Store.SetValue(key, storage.Value{Type: storage.ListType, Data: storage.ListValue(items), ExpiresAt: value.ExpiresAt})
 
 	if err := aof.Manager.Write(cl.SelectedDB, cmd); err != nil {
 		return protocol.Error("AOF write failed")

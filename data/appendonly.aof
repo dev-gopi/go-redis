@@ -1,8 +1,9 @@
-set efdvdv bgff bdfb NX
-del efdvdv
-set verbgets dafvbdebdebe NX
-del hiii
-json.set hiiivsfvsd . {
-    "test":"test"
-} NX
-set gopi nath NX
+{"db":0,"cmd":["set","string","string","NX"]}
+{"db":0,"cmd":["rpush","list","value"]}
+{"db":0,"cmd":["rpushx","list","value end 1"]}
+{"db":0,"cmd":["lpushx","list","value top 1"]}
+{"db":0,"cmd":["json.set","json",".","{\n    \"json\": \"value\",\n    \"json1\": \"value1\"\n}","NX"]}
+{"db":0,"cmd":["sadd","set","set","set 1","set 2"]}
+{"db":0,"cmd":["sadd","set","gfnfnf"]}
+{"db":0,"cmd":["srem","set","gfnfnf"]}
+{"db":0,"cmd":["hdel","hash","test"]}

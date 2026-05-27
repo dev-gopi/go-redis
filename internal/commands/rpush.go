@@ -8,7 +8,7 @@ import (
 	"github.com/dev-gopi/go-redis/internal/storage"
 )
 
-func HandleLPush(cl *client.Client, cmd []string) string {
+func HandleRPush(cl *client.Client, cmd []string) string {
 	if len(cmd) < 3 {
 		return protocol.Error("wrong number of arguments")
 	}
@@ -25,7 +25,7 @@ func HandleLPush(cl *client.Client, cmd []string) string {
 	}
 
 	for i := 2; i < len(cmd); i++ {
-		items = append([]string{cmd[i]}, items...)
+		items = append(items, cmd[i])
 	}
 
 	if value, ok := db.Store.GetValue(key); ok {

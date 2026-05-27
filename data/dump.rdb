@@ -1,33 +1,46 @@
 {
   "databases": {
     "0": {
-      "gopi": {
-        "Type": "string",
-        "Data": "nath",
-        "ExpiresAt": "0001-01-01T00:00:00Z"
-      },
-      "hi": {
+      "hash": {
         "Type": "hash",
         "Data": {
-          "dhfsh": "hsrghsr",
-          "dhrsth": "6544",
-          "ebes": "gbrgsbgfrr"
+          "hash 1": "value 1",
+          "hash 2": "value 2"
         },
         "ExpiresAt": "0001-01-01T00:00:00Z"
       },
-      "hiiivsfvsd": {
+      "json": {
         "Type": "json",
         "Data": {
-          "Raw": "ewogICAgInRlc3QiOiJ0ZXN0Igp9",
+          "Raw": "ewogICAgImpzb24iOiAidmFsdWUiLAogICAgImpzb24xIjogInZhbHVlMSIKfQ==",
           "Parsed": {
-            "test": "test"
+            "json": "value",
+            "json1": "value1"
           }
         },
         "ExpiresAt": "0001-01-01T00:00:00Z"
       },
-      "verbgets": {
+      "list": {
+        "Type": "list",
+        "Data": [
+          "value top 1",
+          "value",
+          "value end 1"
+        ],
+        "ExpiresAt": "0001-01-01T00:00:00Z"
+      },
+      "set": {
+        "Type": "set",
+        "Data": {
+          "set": {},
+          "set 1": {},
+          "set 2": {}
+        },
+        "ExpiresAt": "0001-01-01T00:00:00Z"
+      },
+      "string": {
         "Type": "string",
-        "Data": "dafvbdebdebe",
+        "Data": "string",
         "ExpiresAt": "0001-01-01T00:00:00Z"
       }
     },

@@ -2,8 +2,10 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
+	"github.com/dev-gopi/go-redis/internal/auth"
 	"github.com/dev-gopi/go-redis/internal/logger"
 	"github.com/dev-gopi/go-redis/internal/network"
 	"github.com/dev-gopi/go-redis/internal/persistence/aof"
@@ -15,12 +17,21 @@ import (
 func main() {
 
 	logger.Init()
+	auth.LoadFromEnv()
 
 	logger.InfoLogger.Println(
 		"Starting Redis Clone Server...",
 	)
 
-	server := network.NewServer(":6379")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = os.Getenv("REDIS_PORT")
+	}
+	if port == "" {
+		port = "6379"
+	}
+
+	server := network.NewServer(":" + port)
 
 	storage.StartTTLWorker()
 
@@ -56,7 +67,7 @@ func main() {
 		10*1024*1024,
 	)
 
-	logger.InfoLogger.Println("Redis clone running on :6379")
+	logger.InfoLogger.Printf("Redis clone running on :%s", port)
 
 	if err := server.Start(); err != nil {
 		log.Fatal(err)

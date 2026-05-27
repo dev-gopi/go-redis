@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/dev-gopi/go-redis/internal/logger"
+	"github.com/dev-gopi/go-redis/internal/persistence/snapshot"
 	"github.com/dev-gopi/go-redis/internal/storage"
 )
 
@@ -28,6 +29,17 @@ func Replay(path string) error {
 
 	defer file.Close()
 
+	// if a snapshot was loaded and the aof file is older-or-equal to the snapshot,
+	// skip replay to avoid duplicating state already present in the snapshot.
+	if !snapshot.LoadedAt.IsZero() {
+		if fi, err := os.Stat(path); err == nil {
+			if !fi.ModTime().After(snapshot.LoadedAt) {
+				logger.InfoLogger.Printf("AOF is older-or-equal to snapshot (aof=%v snapshot=%v), skipping replay", fi.ModTime(), snapshot.LoadedAt)
+				return nil
+			}
+		}
+	}
+
 	scanner := bufio.NewScanner(file)
 	currentDB := 0
 
@@ -35,13 +47,28 @@ func Replay(path string) error {
 
 		line := scanner.Text()
 
-		parts := strings.Split(line, " ")
-
-		if len(parts) == 0 {
-			continue
+		// Try JSON first (new format)
+		var entry struct {
+			DB  int      `json:"db"`
+			Cmd []string `json:"cmd"`
 		}
 
-		command := strings.ToUpper(parts[0])
+		parts := []string{}
+		command := ""
+
+		if err := json.Unmarshal([]byte(line), &entry); err == nil && len(entry.Cmd) > 0 {
+			// JSON format
+			currentDB = entry.DB
+			parts = entry.Cmd
+			command = strings.ToUpper(parts[0])
+		} else {
+			// Fallback to legacy space-separated format
+			parts = strings.Split(line, " ")
+			if len(parts) == 0 {
+				continue
+			}
+			command = strings.ToUpper(parts[0])
+		}
 
 		switch command {
 
@@ -232,6 +259,254 @@ func Replay(path string) error {
 
 			db, _ := storage.Manager.GetDB(currentDB)
 			db.Store.Del(parts[1])
+
+		case "LPUSH":
+
+			if len(parts) < 3 {
+				continue
+			}
+
+			db, err := storage.Manager.GetDB(currentDB)
+			if err != nil {
+				continue
+			}
+
+			items, exists := db.Store.GetList(parts[1])
+			if !exists {
+				value, ok := db.Store.GetValue(parts[1])
+				if ok && value.Type != storage.ListType {
+					continue
+				}
+			}
+
+			for i := 2; i < len(parts); i++ {
+				items = append([]string{parts[i]}, items...)
+			}
+
+			if value, ok := db.Store.GetValue(parts[1]); ok {
+				db.Store.SetValue(parts[1], storage.Value{Type: storage.ListType, Data: storage.ListValue(items), ExpiresAt: value.ExpiresAt})
+			} else {
+				db.Store.SetList(parts[1], items, time.Time{})
+			}
+
+		case "LPUSHX":
+
+			if len(parts) < 3 {
+				continue
+			}
+
+			db, err := storage.Manager.GetDB(currentDB)
+			if err != nil {
+				continue
+			}
+
+			value, exists := db.Store.GetValue(parts[1])
+			if !exists || value.Type != storage.ListType {
+				continue
+			}
+
+			items, ok := db.Store.GetList(parts[1])
+			if !ok {
+				continue
+			}
+
+			for i := 2; i < len(parts); i++ {
+				items = append([]string{parts[i]}, items...)
+			}
+
+			db.Store.SetValue(parts[1], storage.Value{Type: storage.ListType, Data: storage.ListValue(items), ExpiresAt: value.ExpiresAt})
+
+		case "RPUSH":
+
+			if len(parts) < 3 {
+				continue
+			}
+
+			db, err := storage.Manager.GetDB(currentDB)
+			if err != nil {
+				continue
+			}
+
+			items, exists := db.Store.GetList(parts[1])
+			if !exists {
+				value, ok := db.Store.GetValue(parts[1])
+				if ok && value.Type != storage.ListType {
+					continue
+				}
+			}
+
+			items = append(items, parts[2:]...)
+
+			if value, ok := db.Store.GetValue(parts[1]); ok {
+				db.Store.SetValue(parts[1], storage.Value{Type: storage.ListType, Data: storage.ListValue(items), ExpiresAt: value.ExpiresAt})
+			} else {
+				db.Store.SetList(parts[1], items, time.Time{})
+			}
+
+		case "RPUSHX":
+
+			if len(parts) < 3 {
+				continue
+			}
+
+			db, err := storage.Manager.GetDB(currentDB)
+			if err != nil {
+				continue
+			}
+
+			value, exists := db.Store.GetValue(parts[1])
+			if !exists || value.Type != storage.ListType {
+				continue
+			}
+
+			items, ok := db.Store.GetList(parts[1])
+			if !ok {
+				continue
+			}
+
+			items = append(items, parts[2:]...)
+			db.Store.SetValue(parts[1], storage.Value{Type: storage.ListType, Data: storage.ListValue(items), ExpiresAt: value.ExpiresAt})
+
+		case "LPOP":
+
+			if len(parts) < 2 {
+				continue
+			}
+
+			db, err := storage.Manager.GetDB(currentDB)
+			if err != nil {
+				continue
+			}
+
+			items, exists := db.Store.GetList(parts[1])
+			if !exists || len(items) == 0 {
+				db.Store.Del(parts[1])
+				continue
+			}
+
+			remaining := items[1:]
+			if len(remaining) == 0 {
+				db.Store.Del(parts[1])
+			} else if value, ok := db.Store.GetValue(parts[1]); ok {
+				db.Store.SetValue(parts[1], storage.Value{Type: storage.ListType, Data: storage.ListValue(remaining), ExpiresAt: value.ExpiresAt})
+			} else {
+				db.Store.SetList(parts[1], remaining, time.Time{})
+			}
+
+		case "EXPIRE":
+
+			if len(parts) != 3 {
+				continue
+			}
+
+			seconds, err := strconv.Atoi(parts[2])
+			if err != nil {
+				continue
+			}
+
+			db, err := storage.Manager.GetDB(currentDB)
+			if err != nil {
+				continue
+			}
+
+			value, exists := db.Store.GetValue(parts[1])
+			if !exists {
+				continue
+			}
+
+			value.ExpiresAt = time.Now().Add(time.Duration(seconds) * time.Second)
+			db.Store.SetValue(parts[1], value)
+
+		case "INCR":
+
+			if len(parts) != 2 {
+				continue
+			}
+
+			db, err := storage.Manager.GetDB(currentDB)
+			if err != nil {
+				continue
+			}
+
+			value, exists := db.Store.GetValue(parts[1])
+			current := 0
+			if exists {
+				parsed, err := strconv.Atoi(value.Data.(string))
+				if err != nil {
+					continue
+				}
+				current = parsed
+			}
+
+			current++
+			if exists {
+				value.Data = strconv.Itoa(current)
+				db.Store.SetValue(parts[1], value)
+			} else {
+				db.Store.Set(parts[1], strconv.Itoa(current), time.Time{})
+			}
+
+		case "SADD":
+
+			if len(parts) < 3 {
+				continue
+			}
+
+			db, err := storage.Manager.GetDB(currentDB)
+			if err != nil {
+				continue
+			}
+
+			value, exists := db.Store.GetValue(parts[1])
+			if exists && value.Type != storage.SetType {
+				continue
+			}
+
+			members, ok := db.Store.GetSet(parts[1])
+			if !ok {
+				members = make(map[string]struct{})
+			}
+
+			for _, member := range parts[2:] {
+				members[member] = struct{}{}
+			}
+
+			expiresAt := time.Time{}
+			if exists {
+				expiresAt = value.ExpiresAt
+			}
+			db.Store.SetSet(parts[1], members, expiresAt)
+
+		case "SREM":
+
+			if len(parts) < 3 {
+				continue
+			}
+
+			db, err := storage.Manager.GetDB(currentDB)
+			if err != nil {
+				continue
+			}
+
+			value, exists := db.Store.GetValue(parts[1])
+			if !exists || value.Type != storage.SetType {
+				continue
+			}
+
+			members, ok := db.Store.GetSet(parts[1])
+			if !ok {
+				continue
+			}
+
+			for _, member := range parts[2:] {
+				delete(members, member)
+			}
+
+			if len(members) == 0 {
+				db.Store.Del(parts[1])
+			} else {
+				db.Store.SetSet(parts[1], members, value.ExpiresAt)
+			}
 		}
 	}
 
