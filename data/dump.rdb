@@ -38,6 +38,13 @@
         },
         "ExpiresAt": "0001-01-01T00:00:00Z"
       },
+      "sset": {
+        "Type": "zset",
+        "Data": {
+          "sset": 23
+        },
+        "ExpiresAt": "0001-01-01T00:00:00Z"
+      },
       "string": {
         "Type": "string",
         "Data": "string",

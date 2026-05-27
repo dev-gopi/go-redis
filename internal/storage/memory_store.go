@@ -165,12 +165,17 @@ func (s *Store) SetValue(
 
 func (s *Store) Export() map[string]Value {
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	copyData := make(map[string]Value)
+	now := time.Now()
 
 	for k, v := range s.data {
+		if !v.ExpiresAt.IsZero() && now.After(v.ExpiresAt) {
+			delete(s.data, k)
+			continue
+		}
 		copyData[k] = v
 	}
 	logger.DebugLogger.Printf("Export count=%d", len(copyData))

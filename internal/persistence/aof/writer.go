@@ -36,6 +36,33 @@ func Init(path string) error {
 	return nil
 }
 
+func Reset(path string) error {
+	if Manager == nil {
+		return Init(path)
+	}
+
+	Manager.mu.Lock()
+	defer Manager.mu.Unlock()
+
+	if Manager.file != nil {
+		_ = Manager.file.Close()
+	}
+
+	file, err := os.OpenFile(
+		path,
+		os.O_CREATE|
+			os.O_TRUNC|
+			os.O_RDWR,
+		0644,
+	)
+	if err != nil {
+		return err
+	}
+
+	Manager.file = file
+	return nil
+}
+
 type aofEntry struct {
 	DB  int      `json:"db"`
 	Cmd []string `json:"cmd"`

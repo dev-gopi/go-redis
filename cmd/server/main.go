@@ -53,7 +53,14 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(time.Minute)
-			_ = snapshot.Save("data/dump.rdb")
+			if err := snapshot.Save("data/dump.rdb"); err != nil {
+				logger.ErrorLogger.Printf("Snapshot save failed: %v", err)
+				continue
+			}
+
+			if err := aof.Reset("data/appendonly.aof"); err != nil {
+				logger.ErrorLogger.Printf("AOF reset failed after snapshot: %v", err)
+			}
 		}
 	}()
 

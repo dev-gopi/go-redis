@@ -149,6 +149,13 @@ func Handle(cl *client.Client, cmd []string) string {
 		}
 		return commands.HandleLPop(cl, cmd)
 
+	case "RPOP":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleRPop(cl, cmd)
+
 	case "LRANGE":
 		authErr := RequireAuth(cl)
 		if authErr != "" {
@@ -204,6 +211,34 @@ func Handle(cl *client.Client, cmd []string) string {
 			return authErr
 		}
 		return commands.HandleSRem(cl, cmd)
+
+	case "ZADD":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleZAdd(cl, cmd)
+
+	case "ZCARD":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleZCard(cl, cmd)
+
+	case "ZRANGE":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleZRange(cl, cmd)
+
+	case "ZREM":
+		authErr := RequireAuth(cl)
+		if authErr != "" {
+			return authErr
+		}
+		return commands.HandleZRem(cl, cmd)
 
 	case "JSON.SET":
 		authErr := RequireAuth(cl)

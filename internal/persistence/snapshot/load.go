@@ -52,7 +52,7 @@ func Load(path string) error {
 		}
 
 		db, _ := storage.Manager.GetDB(0)
-		db.Store.Import(normalizeValues(legacy))
+		db.Store.Import(filterExpiredValues(normalizeValues(legacy)))
 		return nil
 	}
 
@@ -62,7 +62,7 @@ func Load(path string) error {
 			continue
 		}
 
-		db.Store.Import(normalizeValues(values))
+		db.Store.Import(filterExpiredValues(normalizeValues(values)))
 	}
 
 	// set LoadedAt to snapshot file mod time
@@ -75,6 +75,20 @@ func Load(path string) error {
 	logger.InfoLogger.Printf("Snapshot loaded: %s", path)
 
 	return nil
+}
+
+func filterExpiredValues(values map[string]storage.Value) map[string]storage.Value {
+	filtered := make(map[string]storage.Value, len(values))
+	now := time.Now()
+
+	for key, value := range values {
+		if !value.ExpiresAt.IsZero() && now.After(value.ExpiresAt) {
+			continue
+		}
+		filtered[key] = value
+	}
+
+	return filtered
 }
 
 func normalizeValues(values map[string]storage.Value) map[string]storage.Value {

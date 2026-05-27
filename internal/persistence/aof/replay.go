@@ -393,6 +393,32 @@ func Replay(path string) error {
 				db.Store.SetList(parts[1], remaining, time.Time{})
 			}
 
+		case "RPOP":
+
+			if len(parts) < 2 {
+				continue
+			}
+
+			db, err := storage.Manager.GetDB(currentDB)
+			if err != nil {
+				continue
+			}
+
+			items, exists := db.Store.GetList(parts[1])
+			if !exists || len(items) == 0 {
+				db.Store.Del(parts[1])
+				continue
+			}
+
+			remaining := items[:len(items)-1]
+			if len(remaining) == 0 {
+				db.Store.Del(parts[1])
+			} else if value, ok := db.Store.GetValue(parts[1]); ok {
+				db.Store.SetValue(parts[1], storage.Value{Type: storage.ListType, Data: storage.ListValue(remaining), ExpiresAt: value.ExpiresAt})
+			} else {
+				db.Store.SetList(parts[1], remaining, time.Time{})
+			}
+
 		case "EXPIRE":
 
 			if len(parts) != 3 {
@@ -506,6 +532,72 @@ func Replay(path string) error {
 				db.Store.Del(parts[1])
 			} else {
 				db.Store.SetSet(parts[1], members, value.ExpiresAt)
+			}
+
+		case "ZADD":
+
+			if len(parts) < 4 || len(parts)%2 != 0 {
+				continue
+			}
+
+			db, err := storage.Manager.GetDB(currentDB)
+			if err != nil {
+				continue
+			}
+
+			value, exists := db.Store.GetValue(parts[1])
+			if exists && value.Type != storage.ZSetType {
+				continue
+			}
+
+			members, ok := db.Store.GetZSet(parts[1])
+			if !ok {
+				members = make(map[string]float64)
+			}
+
+			for i := 2; i < len(parts); i += 2 {
+				score, err := strconv.ParseFloat(parts[i], 64)
+				if err != nil {
+					continue
+				}
+				members[parts[i+1]] = score
+			}
+
+			expiresAt := time.Time{}
+			if exists {
+				expiresAt = value.ExpiresAt
+			}
+			db.Store.SetZSet(parts[1], members, expiresAt)
+
+		case "ZREM":
+
+			if len(parts) < 3 {
+				continue
+			}
+
+			db, err := storage.Manager.GetDB(currentDB)
+			if err != nil {
+				continue
+			}
+
+			value, exists := db.Store.GetValue(parts[1])
+			if !exists || value.Type != storage.ZSetType {
+				continue
+			}
+
+			members, ok := db.Store.GetZSet(parts[1])
+			if !ok {
+				continue
+			}
+
+			for _, member := range parts[2:] {
+				delete(members, member)
+			}
+
+			if len(members) == 0 {
+				db.Store.Del(parts[1])
+			} else {
+				db.Store.SetZSet(parts[1], members, value.ExpiresAt)
 			}
 		}
 	}

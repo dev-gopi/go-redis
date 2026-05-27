@@ -10,3 +10,12 @@ sadd set set set 1 set 2
 sadd set gfnfnf
 srem set gfnfnf
 hdel hash test
+zadd sset 23 sset
+zadd sset 545 sfvsv
+zrem sset sfvsv
+rpushx list demo
+lpushx list ggggg
+lpop list
+rpop list
+set test_time test_time EX 10 NX
+set test test EX 10 NX
